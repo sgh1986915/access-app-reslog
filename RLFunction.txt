@@ -1,0 +1,1450 @@
+' Access the GetUserNameA function in advapi32.dll and
+' call the function GetUserName.
+Declare Function GetUserName Lib "advapi32.dll" Alias "GetUserNameA" _
+     (ByVal lpBuffer As String, nSize As Long) As Long
+
+
+Option Compare Database
+Function Pi() As Double
+Pi = Atn(1) * 4
+End Function
+Function Normdist(x As Double, Avg As Double, StDev As Double) As Double
+'
+'   Calcultes the normal distribution
+'
+Normdist = 1 / (Sqr(2 * Pi()) * StDev) * Exp(-(x - Avg) ^ 2 / (2 * StDev ^ 2))
+
+End Function
+Function NormdistC(x As Double, Avg As Double, StDev As Double) As Double
+'
+'   Calcultes the cumulative normal distribution
+'
+Dim cor As Single
+
+
+End Function
+Function ImpUSdata(Path As String, FileName As String, ScreenID As Long, Angle As Integer) As String
+'
+'   Denne funksjonen importerer spaltemål data
+'
+
+    Dim strFileName As String, strDocName As String, strSql As String
+    Dim stDocName As String
+    Dim stLinkCriteria As String
+ 
+
+Exit Function
+'    DoCmd.SetWarnings False
+
+
+Forms![frmSlotFileImport]![txtAngleTblImp] = Angle
+Forms![frmSlotFileImport]![txtFileNameUnb] = FileName
+Forms![frmSlotFileImport]![cboPath] = Path
+Forms![frmProduction]![ScreenID] = ScreenID
+
+'Call LoadSlotDataFile_Click
+
+'cmdOK_Click
+
+'MsgBox ("last fil")
+
+'
+'   Import of raw data to table "tblSlotImport"
+'
+    strFileName = Forms![frmSlotFileImport]![cboPath]
+    strFileName = strFileName & Forms![frmSlotFileImport]![txtFileNameUnb]
+    DoCmd.TransferText acImportDelim, "SlotImportSpec", "tblSlotImport", strFileName
+    
+'
+'   Data is converted and copied into "tblSlotTempApp"
+'
+    strDocName = "qrytblSlotTempApp"
+    DoCmd.OpenQuery strDocName, acNormal, acEdit
+
+'
+'   Copy data to "tblScreenSlotStatisticsApp"
+'
+    stDocName = "qrytblScreenSlotStatisticsApp"
+    DoCmd.OpenQuery stDocName, acNormal, acEdit
+    
+'
+'   Copy data to "tblSlotCondensed"
+'
+    stDocName = "qrytblSlotCondensedApp"
+    DoCmd.OpenQuery stDocName, acNormal, acEdit
+    
+'
+'   Copy data to "tblSlotFrequency"
+'
+    stDocName = "qrytblSlotFrequencyApp"
+    DoCmd.OpenQuery stDocName, acNormal, acEdit
+    
+'
+'   Delete data from "tblSlotImport"
+'
+    stDocName = "qrytblSlotImportDel"
+    DoCmd.OpenQuery stDocName, acNormal, acEdit
+
+'
+'   Delete data from "tblSlotTemp"
+'
+    stDocName = "qrytblSlotTempDel"
+    DoCmd.OpenQuery stDocName, acNormal, acEdit
+      
+    
+    
+    
+    
+'    DoCmd.SetWarnings True
+
+ImpUSdata = "OK"
+
+End Function
+Function ConvertDate(DateStr As String, TimeStr As String) As Date
+'
+'   The function converts date and time from log file to date type
+'
+'   03.04.02;09:25:50
+'   2/21/02;2:48:17 PM
+'   4/1/2003;10:43:01 AM
+'
+'   New date format in Scorpion 1.90
+'   DATEFORMAT=yyyymmdd
+'   TIMEFORMAT = hhmmss:zzz
+'
+'   Function updated 21.05.2003 TM
+'
+Dim LenStr As Integer, PosStr As Integer, TimeVal As Integer
+
+If Left(Right(DateStr, 3), 1) = "." Then
+    ConvertDate = DateStr
+ElseIf Left(Right(DateStr, 3), 1) = "/" Then
+    LenStr = Len(DateStr)
+    PosStr = InStr(DateStr, "/")
+    ConvertDate = Mid(DateStr, PosStr + 1, LenStr - PosStr - 3) & "." & Left(DateStr, PosStr - 1) & "." & Right(DateStr, 2)
+ElseIf Left(Right(DateStr, 5), 1) = "/" Then
+    LenStr = Len(DateStr)
+    PosStr = InStr(DateStr, "/")
+    ConvertDate = Mid(DateStr, PosStr + 1, LenStr - PosStr - 5) & "." & Left(DateStr, PosStr - 1) & "." & Right(DateStr, 4)
+Else
+    ConvertDate = Right(DateStr, 2) & "." & Mid(DateStr, 5, 2) & "." & Left(DateStr, 4)
+End If
+
+If Right(TimeStr, 2) = "AM" Then
+    LenStr = Len(TimeStr)
+    ConvertDate = ConvertDate & " " & Left(TimeStr, LenStr - 3)
+ElseIf Right(TimeStr, 2) = "PM" Then
+    LenStr = Len(TimeStr)
+    
+    If Left(TimeStr, LenStr - 9) = "12" Then
+        TimeVal = 0
+    Else
+        TimeVal = 12
+    End If
+    
+    ConvertDate = ConvertDate & " " & Left(TimeStr, LenStr - 9) + TimeVal & Mid(TimeStr, LenStr - 8, 6)
+ElseIf Mid(TimeStr, 7, 1) = ":" Then
+    ConvertDate = ConvertDate & " " & Left(TimeStr, 2) & ":" & Mid(TimeStr, 3, 2) & ":" & Mid(TimeStr, 5, 2)
+Else
+    ConvertDate = ConvertDate & " " & TimeStr
+End If
+
+
+End Function
+Public Function mk3digit(in_nr As Integer, tot_nr As Integer) As String
+If tot_nr < 999 Then
+    If in_nr > 99 Then mk3digit = "" & in_nr
+    If in_nr <= 99 And in_nr > 9 Then mk3digit = "0" & in_nr
+    If in_nr <= 9 Then mk3digit = "00" & in_nr
+Else
+    If in_nr > 999 Then mk3digit = "" & in_nr
+    If in_nr <= 999 And in_nr > 99 Then mk3digit = "0" & in_nr
+    If in_nr <= 99 And in_nr > 9 Then mk3digit = "00" & in_nr
+    If in_nr <= 9 Then mk3digit = "000" & in_nr
+End If
+End Function
+
+Public Sub MarkUsedParts()
+Dim dbset As Database
+Dim recset As DAO.Recordset, recset1 As DAO.Recordset
+
+Set dbset = CurrentDb
+Set recset = dbset.OpenRecordset("qryMarkSerialNoUsed", dbOpenDynaset)
+Set recset1 = dbset.OpenRecordset("tblSerialNo", dbOpenDynaset)
+
+If Not recset.EOF Then
+    recset.MoveFirst
+    Do While Not recset.EOF
+        If recset!markert Then
+            recset1.FindFirst "SerialNoID=" & recset!SerialNoID
+            recset1.Edit
+            recset1!Used = True
+            recset1.Update
+        End If
+        recset.MoveNext
+    Loop
+End If
+
+recset.Close
+recset1.Close
+dbset.Close
+
+End Sub
+
+Public Sub SaveFileNamet(ByRef scid As Long, ByRef fnam As String)
+Dim dbase As Database
+Dim recset As DAO.Recordset
+
+Set dbase = CurrentDb
+Set recset = dbase.OpenRecordset("tblScreen", dbOpenDynaset)
+recset.FindFirst "ScreenID=" & scid
+recset.Edit
+recset!FileName = fnam
+recset.Update
+recset.Close
+dbase.Close
+
+End Sub
+Public Function CalWt(OD As Single, Pitch As Single, Xsec As Single, L As Single) As Single
+'
+'   The function calculates weight of wrapping wire on a screen joint
+'
+If Nz(OD, 0) = 0 Then
+    MsgBox "Nominel screen OD in Order detail form is missing!"
+    CalWt = -1
+    Exit Function
+End If
+If Nz(Pitch, 0) = 0 Then
+    MsgBox "Enter pitch!"
+    CalWt = -1
+    Exit Function
+End If
+If Nz(Xsec, 0) = 0 Then
+    MsgBox "Weight/meter of wrap wire in Order detail form is missing"
+    CalWt = -1
+    Exit Function
+End If
+If Nz(L, 0) = 0 Then
+    MsgBox "Enter screen length"
+    CalWt = -1
+    Exit Function
+ElseIf L < 15 Then
+    MsgBox "Wrap length to short, enter length in [mm]!"
+    CalWt = -1
+    Exit Function
+ElseIf L > 13000 Then
+    MsgBox "Wrap length to long, enter length in [mm]!"
+    CalWt = -1
+    Exit Function
+End If
+
+CalWt = L / Pitch * 3.14 * OD * Xsec / 1000000
+End Function
+Function ScreenSec(Pos As Integer) As Integer
+'   NOT USED
+'
+'   ResShunt function
+'   This function calculates screen section for slot measurements
+'
+
+If Pos < 1900 Then
+    ScreenSec = 1
+ElseIf Pos < 3900 Then
+    ScreenSec = 2
+ElseIf Pos < 5900 Then
+    ScreenSec = 3
+ElseIf Pos < 7800 Then
+    ScreenSec = 4
+ElseIf Pos < 9800 Then
+    ScreenSec = 5
+Else
+    ScreenSec = 6
+End If
+
+
+End Function
+Function AnalyzeSlotTemp() As Long
+'   NOT USED
+'
+'   Loop through temporary table tblSlotTemp to identify
+'   number of sections and angles measured
+'
+'   This is copy from ResLog Shunt and needs to be modified
+
+Exit Function
+
+On Error GoTo Err_AnalyzeSlotTemp
+
+Dim dbset As Database
+Dim recset As DAO.Recordset, recset1 As DAO.Recordset, recset2 As DAO.Recordset
+
+Dim IPos As Integer, ISec As Integer
+Dim ISlot As Integer, ISlotPrev As Integer, ISlotNext As Integer
+Dim stSec As String, stFileName As String, stText As String
+Dim stSql As String
+Dim I1 As Integer
+Dim StartDate As Date
+Dim ScreenID As Long
+
+
+Set dbset = CurrentDb
+Set recset = dbset.OpenRecordset("tblSlotTemp", dbOpenDynaset)
+Set recset1 = dbset.OpenRecordset("tblSlotTempAnalyzed", dbOpenDynaset)
+Set recset2 = dbset.OpenRecordset("tblSlotFile", dbOpenDynaset)
+
+' Dersom kommando kjøres med eksisterende fil må noe gjøres
+' skjema under er ikke åpent!
+
+stFileName = Forms![frmSlotFileImport]![txtFileNameUnb]
+
+    stText = "Enter line (1-12) or angle (0, 30 ... 330) for log file:" & Chr(13) & Chr(10)
+    stText = stText & stFileName
+    I1 = CInt(InputBox(stText, "ResLog"))
+    If I1 > 0 And I1 < 13 Then
+        IAngle = I1 * 30 - 30
+    Else
+        IAngle = I1
+    End If
+
+If Not recset.EOF Then
+    recset.MoveFirst
+    ScreenID = recset!ScreenID
+    IPos = recset!Pos
+    StartDate = recset!Date
+    ISec = ScreenSec(IPos)
+    stSec = ISec
+'
+'   Loop through tblSlotTemp to read records
+'
+    Do While Not recset.EOF
+        If recset!Pos - IPos > 30 Then
+            IPos = recset!Pos
+            ISec = ScreenSec(IPos)
+            stSec = stSec & ISec
+        ElseIf recset!Pos - IPos < -100 Then
+            IPos = recset!Pos
+            ISec = ScreenSec(IPos)
+            IAngle = IAngle + 30
+        End If
+        IPos = recset!Pos
+'
+'   Write data to table tblSlotTempAnalyzed
+'
+        If recset!slot = 0 Then     '   Skip record if slot = 0
+            GoTo SkipRecord
+        End If
+        
+        recset1.AddNew
+        recset1!Index = recset!AutoIndex
+        recset1!ScreenID = recset!ScreenID
+        recset1!Pos = recset!Pos
+        recset1!slot = recset!slot
+        recset1!Date = recset!Date
+        recset1!Angle = IAngle
+        recset1!Section = ISec
+        recset1.Update
+        
+SkipRecord:
+'
+'   Writing data completed
+'
+        recset.MoveNext
+    Loop
+End If
+
+stSql = "(tblSlotFile.ScreenID)=" & ScreenID
+stSql = stSql & " AND (tblSlotFile.Sections) Like '*" & stSec & "*' AND (tblSlotFile.Angle)=" & IAngle
+
+
+If DCount("[ScreenID]", "tblSlotFile", stSql) > 0 Then
+    MsgBox ("Data has already been imported for this line and section")
+Else
+
+'
+'   Add data to tblSlotFile
+'
+        recset2.AddNew
+        recset2!ScreenID = ScreenID
+        recset2!FileName = stFileName
+        recset2!FilePathName = Forms![frmSlotFileImport]![txtFileNameUnbx]
+        recset2!Sections = stSec
+        recset2!Angle = IAngle
+        recset2!TimeStart = StartDate
+        recset2.Update
+
+
+    DoCmd.SetWarnings False
+
+'
+'   Append data to "tblLargeSlots"
+'
+    stDocName = "qrySlotTempAnalyzedLargeApp"
+    DoCmd.OpenQuery stDocName, acNormal, acEdit
+    
+    DoCmd.SetWarnings True
+
+End If
+
+AnalyzeSlotTemp = ISec
+
+recset.Close
+recset1.Close
+recset2.Close
+
+dbset.Close
+
+Exit_AnalyzeSlotTemp:
+    Exit Function
+
+Err_AnalyzeSlotTemp:
+    MsgBox Err.Description
+    Resume Exit_AnalyzeSlotTemp
+    
+
+End Function
+Function MasImportShunt(SlotFileID As Long, FilePath As String, Angle As Integer) As Integer
+'
+'   This function imports slot data int slot distribution table based on gauge resolution
+'
+On Error GoTo Err_MasImportShunt
+
+    Dim strFileName As String, strDocName As String, strSql As String
+    Dim IDSlotFile As Long
+    Dim stDocName As String
+    Dim stLinkCriteria As String
+    Dim dbs As Database
+    Dim rst1 As DAO.Recordset, rst2 As DAO.Recordset
+    Dim a As Integer
+    
+'
+'   If record exists in tblSlotFile, exit function
+'
+a = 1
+
+    stSql = "(tblSlotData.SlotFileID) Like " & SlotFileID
+
+    If DCount("[SlotFileID]", "tblSlotData", stSql) > 0 Then
+        MasImportShunt = 2
+        GoTo Exit_MasImportShunt
+    End If
+    
+'    MasImportShunt = 3
+'    GoTo Exit_MasImportShunt
+    
+    
+'
+'   Add new record to table tblSlotFile
+'
+
+    Set dbs = CurrentDb
+'    Set recset = dbs.OpenRecordset("tblSlotFile", dbOpenDynaset)
+'
+'    recset.AddNew
+'    recset!ScreenID = ScreenID
+'    recset!FilePath = FilePath
+'    recset!FileName = FileName
+'    recset!Angle = Angle
+'    recset!Sections = Sections
+'    recset!ResGaugeStartDate = TimeStart
+'    recset!SlotDate = SlotDate
+'    recset!SlotSign = SlotSign
+'    IDSlotFile = recset!SlotFileID
+'    recset.Update
+    
+    
+'    recset.Close
+    
+'
+'   Import slot data
+'
+    
+    DoCmd.TransferText acImportDelim, "ImportSpecification", "tblSlotImp", FilePath
+    
+'
+'   Copy slot data and delete data form temporary table
+'
+
+    Set recset1 = dbs.OpenRecordset("tblSlotImp", dbOpenDynaset)
+    Set recset2 = dbs.OpenRecordset("tblSlotData", dbOpenDynaset)
+    
+    Do While Not recset1.EOF
+        recset2.AddNew
+        recset2!SlotFileID = SlotFileID
+        recset2!SlotPos = recset1!SlotImpPos
+        recset2!SlotWidth = recset1!SlotImpSlot
+        recset2.Update
+        recset1.Delete
+        recset1.MoveNext
+    Loop
+    
+    recset1.Close
+    recset2.Close
+    dbs.Close
+     
+    MasImportShunt = 1
+
+Exit_MasImportShunt:
+    Exit Function
+
+Err_MasImportShunt:
+'    MsgBox Err.Description
+    MasImportShunt = -99
+    Resume Exit_MasImportShunt
+
+End Function
+Function PrintDoc(DocName As String) As Integer
+
+'Dim DocLink As Hyperlink
+'DocLink.HyperlinkAddress = DocName
+'DocLink.PrintOut
+
+'Dim sAcrobatReaderExe As String ' full path to the Acrobat reader executable
+'sAcrobatReaderExe = "C:\Program Files\Adobe\Reader 8.0\Reader\AcroRd32.exe"
+'RetVal = Shell(sAcrobatReaderExe & " /P " & Chr(34) & DocName & Chr(34), 0)
+
+
+End Function
+Function Bitc(Tall As Variant, Bitnr As Integer) As Integer
+
+'
+'   Funksjonen kontrolerer om Tall har bit lik 1
+'   i bitposisjon Bitnr, i så fall returneres <> 0 (sann)
+'   ellers returneres 0 (usann)
+'
+ 
+'Trap any errors that trig
+On Error GoTo ErrorBitc
+
+If IsNull(Tall) Then
+    Bitc = 0
+    Exit Function
+End If
+
+If Bitnr < 0 Or Bitnr > 30 Then
+    MsgBox "Bitnr < 0 eller > 31"
+    Exit Function
+End If
+
+Bitc = IIf(Tall And 2 ^ Bitnr, -1, 0)
+
+Exit Function
+
+'This part generates errormessage and terminates function
+ErrorBitc:
+    MsgBox Err.Description
+
+'Dim strErrorMessage As String
+'strErrorMessage = "Følgende feilmelding har oppstått i function 'Bitsc': " & Err & " " & Error$
+'MsgBox strErrorMessage, 16, "FEILMELDING"
+
+Exit Function
+
+End Function
+
+Function Bitstreng(Tall As Long) As String
+
+'
+'   Funksjonen returnerer Tall omformet til et binært tall
+'   i tekstformat
+'
+ 
+'Trap any errors that trig
+On Error GoTo ErrorBitstreng
+
+Dim a As Double
+Dim S As String
+Dim I As Integer
+
+a = Tall
+I = 0
+
+Do While a > 0.1
+If I > 0 And I Mod 4 = 0 Then S = "  " & S
+a = a / 2
+If a - Int(a) > 0.1 Then
+    S = "1" & S
+    a = Int(a)
+    Else
+    S = "0" & S
+End If
+
+I = I + 1
+Loop
+
+Bitstreng = S
+
+Exit Function
+
+'This part generates errormessage and terminates function
+ErrorBitstreng:
+    MsgBox Err.Description
+'Dim strErrorMessage As String
+'strErrorMessage = "Følgende feilmelding har oppstått i function 'Bitstreng': " & Err & " " & Error$
+'MsgBox strErrorMessage, 16, "FEILMELDING"
+
+Exit Function
+
+End Function
+
+Function AnalyzeSlotData(SlotFileID As Long, AssemblyID As Integer, NLines As Integer) As Integer
+'   NOT USED
+'
+'   The functions loops through tblSlotData and determines sections
+'   and angles
+'
+Dim dbs As Database
+Dim rst As Recordset
+Dim stSql As String
+Dim PosIDArray() As Long
+Dim WrapArray() As Long
+Dim WrapPosArray() As Single
+Dim NormalSections As Integer, TestSections As Integer, NSections As Integer
+Dim I As Integer, J As Integer  '   I = counter for wrap sections, J = counter for lines (angles)
+Dim OldSlotPos As Single, NewSlotPos As Single
+Dim strDebug As String
+
+    NormalSections = DCount("[WrapLength]", "tblWrap", "[AssemblyID]=" & AssemblyID & " AND [WrapTypeID]=1")
+    TestSections = DCount("[WrapLength]", "tblWrap", "[AssemblyID]=" & AssemblyID & " AND [WrapTypeID]=2")
+    NSections = NormalSections + TestSections
+    If NSections = 0 Then
+        MsgBox "No wrapped section recorded"
+        Exit Function
+    End If
+    
+    
+    
+    ReDim PosIDArray(NSections + 2, NLines)
+    ReDim WrapArray(NSections, 2)       '   WrapID and WrapTypeID
+    ReDim WrapPosArray(NSections, 2)    '   StartPos and WrapLength
+
+    Set dbs = CurrentDb
+    
+    stSql = "SELECT tblWrap.AssemblyID, tblWrap.WrapID, "
+    stSql = stSql & "tblWrap.WrapTypeID, tblWrap.WrapSection, "
+    stSql = stSql & "tblWrap.WrapStartPos, tblWrap.WrapLength "
+    stSql = stSql & "FROM tblWrap "
+    stSql = stSql & "WHERE (tblWrap.AssemblyID) = " & AssemblyID
+    stSql = stSql & "AND (tblWrap.WrapTypeID) <= 2 "
+    stSql = stSql & "ORDER BY tblWrap.WrapStartPos"
+    
+    Set rst = dbs.OpenRecordset(stSql, dbOpenDynaset)
+    rst.MoveFirst
+    
+    For I = 1 To NSections
+        WrapArray(I, 1) = rst!WrapID
+        WrapArray(I, 2) = rst!WrapTypeID
+        WrapPosArray(I, 1) = rst!WrapStartPos
+        WrapPosArray(I, 2) = rst!WrapLength
+'        Debug.Print WrapArray(I, 1)
+        rst.MoveNext
+    Next I
+    
+    
+    stSql = "SELECT tblSlotData.SlotFileID, tblSlotData.SlotID, "
+    stSql = stSql & "tblSlotData.SlotSection, tblSlotData.SlotAngle, "
+    stSql = stSql & "tblSlotData.SlotPos, tblSlotData.WrapID "
+    stSql = stSql & "FROM tblSlotData "
+    stSql = stSql & "WHERE (tblSlotData.SlotFileID) = " & SlotFileID
+    stSql = stSql & " ORDER BY tblSlotData.SlotID"
+
+    Set rst = dbs.OpenRecordset(stSql, dbOpenDynaset)
+    rst.MoveFirst
+    I = 0
+    J = 0
+    OldSlotPos = 0
+
+    Do While Not rst.EOF
+        NewSlotPos = rst!SlotPos
+        If NewSlotPos > (OldSlotPos + 10) Then
+            I = I + 1
+            PosIDArray(I, J) = rst!SlotID
+'            Debug.Print I & ";" & J & ";" & PosIDArray(I, J)
+        ElseIf NewSlotPos < OldSlotPos Then
+            J = J + 1
+            I = 0
+            PosIDArray(I, J) = rst!SlotID
+'            Debug.Print I & ";" & J & ";" & PosIDArray(I, J)
+        End If
+        OldSlotPos = NewSlotPos
+        rst.MoveNext
+    Loop
+
+    AnalyzeSlotData = J
+
+'If Not rst.EOF Then
+'    rst.MoveFirst
+'    PosArray(I, J) = rst!SlotPos
+'    'ISec = ScreenSec(IPos)
+'    'stSec = ISec
+''
+''   Loop through tblSlotTemp to read records
+''
+'    Do While Not recset.EOF
+'        If rst!SlotPos - PosArray(I, J) > 30 Then
+'            IPos = recset!Pos
+'            ISec = ScreenSec(IPos)
+'            stSec = stSec & ISec
+'        ElseIf recset!Pos - IPos < -100 Then
+'            IPos = recset!Pos
+'            ISec = ScreenSec(IPos)
+'            IAngle = IAngle + 30
+'        End If
+'        IPos = recset!Pos
+''
+''   Write data to table tblSlotTempAnalyzed
+''
+'        If recset!Slot = 0 Then     '   Skip record if slot = 0
+'            GoTo SkipRecord
+'        End If
+'
+'        recset1.AddNew
+'        recset1!Index = recset!AutoIndex
+'        recset1!ScreenID = recset!ScreenID
+'        recset1!Pos = recset!Pos
+'        recset1!Slot = recset!Slot
+'        recset1!Date = recset!Date
+'        recset1!Angle = IAngle
+'        recset1!Section = ISec
+'        recset1.Update
+'
+'SkipRecord:
+''
+''   Writing data completed
+''
+'        recset.MoveNext
+'    Loop
+'End If
+'
+'
+''
+'
+''        DoCmd.Hourglass True
+'    For num_pipes = 1 To Qty
+'        rst.Edit
+'        rst!OrderLineID = OrderLineID
+'        rst!Serialno = s_nr
+'        rst.Update
+'    Next num_pipes
+''        DoCmd.Hourglass False
+        rst.Close
+        dbs.Close
+'
+'    I = 1   '   Section 1
+'    J = 1   '   Angle 0
+    
+
+
+
+
+End Function
+Function AnalyseSlotData(SlotFileID As Long) As Integer
+'
+'   The functions loops through tblSlotData and determines sections
+'   Evaluation of multiple angles is not yet implemented
+'
+On Error GoTo Err_AnalyseSlotData
+
+Dim dbs As Database
+Dim rst As Recordset
+Dim stSql As String, stSection As String
+Dim AssemblyID As Long
+Dim PosIDArray() As Long
+Dim WrapArray() As Long
+Dim SlotPosArray() As Single
+Dim WrapPosArray() As Single
+Dim NormalSections As Integer, TestSections As Integer, NSections As Integer
+Dim I As Integer, J As Integer, K As Integer  '   I = counter for wrap sections
+Dim Imax As Integer
+Dim OldSlotPos As Single, NewSlotPos As Single
+Dim strDebug As String
+
+'
+'   Lookup AssemblyID
+'   Lookup number of wrapped sections with status Normal or Test in tblWrap
+'
+    
+    AssemblyID = DLookup("[AssemblyID]", "tblSlotFile", "[SlotFileID]=" & SlotFileID)
+    
+    NormalSections = DCount("[WrapLength]", "tblWrap", "[AssemblyID]=" & AssemblyID & " AND [WrapTypeID]=1")
+    TestSections = DCount("[WrapLength]", "tblWrap", "[AssemblyID]=" & AssemblyID & " AND [WrapTypeID]=2")
+    NSections = NormalSections + TestSections
+    If NSections = 0 Then
+'        MsgBox "No wrapped section recorded"
+        AnalyseSlotData = -1
+        Exit Function
+    End If
+    
+    
+    
+    ReDim PosIDArray(NSections, 2)
+    ReDim SlotPosArray(NSections, 2)
+    ReDim WrapArray(NSections, 2)      '   WrapID and WrapTypeID
+    ReDim WrapPosArray(NSections, 2)    '   StartPos and WrapLength
+
+    Set dbs = CurrentDb
+    
+'
+'   Loop through tblWrap and identify WrapID, WrapTypeID, StartPos and WrapLength for each section
+'
+    
+    stSql = "SELECT tblWrap.AssemblyID, tblWrap.WrapID, "
+    stSql = stSql & "tblWrap.WrapTypeID, tblWrap.WrapSection, "
+    stSql = stSql & "tblWrap.WrapStartPos, tblWrap.WrapLength "
+    stSql = stSql & "FROM tblWrap "
+    stSql = stSql & "WHERE (tblWrap.AssemblyID) = " & AssemblyID
+    stSql = stSql & "AND (tblWrap.WrapTypeID) <= 2 "
+    stSql = stSql & "ORDER BY tblWrap.WrapStartPos"
+    
+    Set rst = dbs.OpenRecordset(stSql, dbOpenDynaset)
+    rst.MoveFirst
+    
+    For I = 1 To NSections
+        WrapArray(I, 1) = rst!WrapID
+        
+        If IsNull(rst!WrapTypeID) Then
+'            MsgBox "Wrap type not recorded!"
+        AnalyseSlotData = -2
+            GoTo Exit_AnalyseSlotData
+        End If
+        WrapArray(I, 2) = rst!WrapTypeID
+        
+        If IsNull(rst!WrapStartPos) Then
+'            MsgBox "Wrap start position not recorded!"
+        AnalyseSlotData = -3
+            GoTo Exit_AnalyseSlotData
+        End If
+        WrapPosArray(I, 1) = rst!WrapStartPos
+        
+        If IsNull(rst!WrapLength) Then
+'            MsgBox "Wrap length not recorded!"
+        AnalyseSlotData = -4
+            GoTo Exit_AnalyseSlotData
+        End If
+        WrapPosArray(I, 2) = rst!WrapLength
+        
+        rst.MoveNext
+    Next I
+    
+'
+'   Loop through tblSlotData
+    
+    stSql = "SELECT tblSlotData.SlotFileID, tblSlotData.SlotID, "
+    stSql = stSql & "tblSlotData.SlotSection, tblSlotData.SlotAngle, "
+    stSql = stSql & "tblSlotData.SlotPos, tblSlotData.WrapID "
+    stSql = stSql & "FROM tblSlotData "
+    stSql = stSql & "WHERE (tblSlotData.SlotFileID) = " & SlotFileID
+    stSql = stSql & " ORDER BY tblSlotData.SlotPos"
+
+    Set rst = dbs.OpenRecordset(stSql, dbOpenDynaset)
+    rst.MoveFirst
+    
+    If rst!WrapID > 0 Then
+'        MsgBox "Slot data has been analysed"
+        AnalyseSlotData = 0
+        GoTo Exit_AnalyseSlotData
+    End If
+    
+    If NSections = 1 Then
+        GoTo WriteWrapID
+    End If
+    
+    OldSlotPos = 0
+    I = 1
+
+    Do While Not rst.EOF
+        NewSlotPos = rst!SlotPos
+        If NewSlotPos > (OldSlotPos + 20) Then      '   Jump to new section
+            PosIDArray(I, 1) = rst!SlotID
+            SlotPosArray(I, 1) = rst!SlotPos
+'            Debug.Print WrapPosArray(I, 1) & ", " & WrapPosArray(I, 2) & ", " & SlotPosArray(I, 1)
+            
+            If I > 1 Then
+                SlotPosArray(I - 1, 2) = OldSlotPos - SlotPosArray(I - 1, 1)
+            End If
+            I = I + 1
+            If I = 7 Then
+            I = 7
+            End If
+        End If
+        If NewSlotPos < OldSlotPos Then             '   Jump back
+'            MsgBox "Log file contains multiple data set for a section. Handling of this is not implemented. Run ResGauge along one line only!"
+            AnalyseSlotData = -6
+'            Debug.Print NewSlotPos & "; " & OldSlotPos
+            GoTo Exit_AnalyseSlotData
+        End If
+        
+        OldSlotPos = NewSlotPos
+        
+        rst.MoveNext
+    Loop
+        
+    SlotPosArray(I - 1, 2) = OldSlotPos - SlotPosArray(I - 1, 1)
+        
+'    For I = 1 To NSections
+'        Debug.Print WrapPosArray(I, 1) & ", " & WrapPosArray(I, 2) & ", " & SlotPosArray(I, 1) & ", " & SlotPosArray(I, 2)
+'    Next I
+        
+'
+'   Loop through wrapped sections and ResGauge sections to detemine start of each ResGauge section
+'   Length of ResGauge section is also compared with wrap length
+'
+    
+    stSection = ""
+    For I = 1 To NSections      '   Loop through ResGauge sections
+        stSection = stSection & I
+        If SlotPosArray(I, 1) = 0 Then GoTo WriteWrapID
+        For J = 1 To NSections  '   Loop through wrapped sections
+            If (SlotPosArray(I, 1) + SlotPosArray(I, 2) / 2) < WrapPosArray(J, 1) + WrapPosArray(J, 2) Then
+                If (SlotPosArray(I, 2) + 300) > WrapPosArray(J, 2) Then
+                    PosIDArray(I, 2) = J
+'                    Debug.Print J & ", " & PosIDArray(I, 1)
+                    GoTo NextSection
+                Else
+'                    MsgBox "Length do not match!"
+'                    Debug.Print SlotFileID & ", " & SlotPosArray(I, 2) & ", " & WrapPosArray(J, 2)
+                End If
+            End If
+        Next J
+NextSection:
+    Next I
+        
+WriteWrapID:
+
+'
+'   Write data to tblSlotData according to SlotID in PosIDArray(n,1)
+'
+
+    I = 0
+    rst.MoveFirst
+    Do While Not rst.EOF
+        If I < NSections Then
+            If rst!SlotID = PosIDArray(I + 1, 1) Then
+                I = I + 1
+            End If
+        End If
+        rst.Edit
+        rst!SlotSection = PosIDArray(I, 2)
+        rst!WrapID = WrapArray(I, 1)
+        rst!SlotAngle = DLookup("[Angle]", "tblSlotFile", "[SlotFileID]=" & SlotFileID)
+        rst.Update
+        rst.MoveNext
+    Loop
+    
+'
+'   Write sections in tblSlotFile
+'
+    stSql = "SELECT tblSlotFile.SlotFileID, tblSlotFile.Sections "
+    stSql = stSql & "FROM tblSlotFile "
+    stSql = stSql & "WHERE (tblSlotFile.SlotFileID)=" & DMax("[SlotFileID]", "tblSlotFile")
+    Set rst = dbs.OpenRecordset(stSql, dbOpenDynaset)
+    rst.Edit
+    rst!Sections = stSection
+    rst.Update
+
+    AnalyseSlotData = I
+
+Exit_AnalyseSlotData:
+    rst.Close
+    dbs.Close
+    Exit Function
+
+Err_AnalyseSlotData:
+'   Write error message to tblBug
+    Forms![Start]![txtBug] = "Function AnalyseSlotData: " & AnalyseSlotData & Err.Description
+    DoCmd.SetWarnings False
+    DoCmd.OpenQuery "qryappBug", acNormal, acEdit
+    DoCmd.SetWarnings True
+'
+    MsgBox Err.Description
+    AnalyseSlotData = -99
+    Resume Exit_AnalyseSlotData
+
+End Function
+
+Function MasImport(ScreenID As Long, FileName As String, FilePath As String, Angle As Integer, Sections As String, TimeStart As Date, SlotDate As Date, SlotSign As Long) As Integer
+'
+'   This function imports slot based on old tblScreen and old tblOrderLine
+'
+On Error GoTo Err_MasImport
+
+    Dim strFileName As String, strDocName As String, strSql As String
+    Dim IDSlotFile As Long
+    Dim stDocName As String
+    Dim stLinkCriteria As String
+    Dim dbs As Database
+    Dim rst As DAO.Recordset, rst1 As DAO.Recordset, rst2 As DAO.Recordset
+    
+'
+'   If record not exist in tblOrder, tblOrderLine, tblAssembly, tbl create records
+'
+    
+    
+    
+    
+'
+'   If record exists in tblSlotFile, exit function
+'
+
+    stSql = "(tblSlotFile.FileName) Like '" & FileName & "'"
+
+    If DCount("[FileName]", "tblSlotFile", stSql) > 0 Then
+        MasImport = 2
+        GoTo Exit_MasImport
+    End If
+    
+'    MasImport = 3
+'    GoTo Exit_MasImport
+    
+    
+'
+'   Add new record to table tblSlotFile
+'
+
+    Set dbs = CurrentDb
+    Set recset = dbs.OpenRecordset("tblSlotFile", dbOpenDynaset)
+    
+    recset.AddNew
+    recset!ScreenID = ScreenID
+    recset!FilePath = FilePath
+    recset!FileName = FileName
+    recset!Angle = Angle
+    recset!Sections = Sections
+    recset!ResGaugeStartDate = TimeStart
+    recset!SlotDate = SlotDate
+    recset!SlotSign = SlotSign
+    IDSlotFile = recset!SlotFileID
+    recset.Update
+    
+    
+    recset.Close
+    
+'
+'   Import slot data
+'
+    
+    DoCmd.TransferText acImportDelim, "ImportSpecification", "tblSlotImp", FilePath
+    
+'
+'   Copy slot data and delete data form temporary table
+'
+
+    Set recset1 = dbs.OpenRecordset("tblSlotImp", dbOpenDynaset)
+    Set recset2 = dbs.OpenRecordset("tblSlotData", dbOpenDynaset)
+    
+    Do While Not recset1.EOF
+        recset2.AddNew
+        recset2!SlotFileID = IDSlotFile
+        recset2!SlotPos = recset1!SlotImpPos
+        recset2!SlotWidth = recset1!SlotImpSlot
+        recset2.Update
+        recset1.Delete
+        recset1.MoveNext
+    Loop
+    
+    recset1.Close
+    recset2.Close
+    dbs.Close
+     
+    MasImport = 1
+
+Exit_MasImport:
+    Exit Function
+
+Err_MasImport:
+'    MsgBox Err.Description
+    MasImport = -99
+    Resume Exit_MasImport
+
+End Function
+Function MasAnalyse(OrderLineID As Long) As Integer
+
+    Dim stSql As String
+    Dim I As Integer
+    Dim dbs As Database
+    Dim rst As DAO.Recordset
+
+    stSql = "SELECT tblAssembly.OrderLineID, tblSlotFile.SlotFileID "
+    stSql = stSql & "FROM tblAssembly INNER JOIN tblSlotFile "
+    stSql = stSql & "ON tblAssembly.AssemblyID = tblSlotFile.SlotFileID "
+    stSql = stSql & "WHERE (tblAssembly.OrderLineID) = " & OrderLineID
+
+    DoCmd.OpenForm "testStatus"
+    
+    Do While Not rst.EOF
+    
+    AnalyseSlotData (rst!SlotFileID)
+    
+'    Me![txtStatus] = rst.PercentPosition
+    
+        rst.MoveNext
+    Loop
+
+    
+    DoCmd.Close acForm, "testStatus"
+
+End Function
+Function LargeExpSlotC(NLines As Integer, C1 As Single, C2 As Single, C3 As Single, C4 As Single, CL1 As Integer, CL2 As Integer, CL3 As Integer, CL4 As Integer) As Single
+'
+'   Calculates largest expected slot
+'
+'   Used in qrySlotExp1111
+'
+Dim C As Single
+
+    
+    If C1 = 0 Then
+        LargeExpSlotC = 0
+        Exit Function
+    End If
+    If CL1 = 0 Then
+        LargeExpSlotC = 0
+        Exit Function
+    End If
+    If NLines = 0 Then
+        LargeExpSlot = 0
+        Exit Function
+    End If
+    
+    If C2 = 0 Then C2 = C1
+    If C3 = 0 Then C3 = C2
+    If C4 = 0 Then C4 = C3
+    
+    If NLines < CL1 Then
+        C = C1
+    ElseIf NLines < CL2 Then
+        C = C2
+    ElseIf NLines < CL3 Then
+        C = C3
+    Else
+        C = C4
+    End If
+    
+    LargeExpSlotC = C
+
+End Function
+Function AnalyseExp(SlotAbove As Integer, NLAbove As Integer, NLines As Integer, C1 As Single, C2 As Single, C3 As Single, C4 As Single, CL1 As Integer, CL2 As Integer, CL3 As Integer, CL4 As Integer, Avg As Single, StDev As Single, SlotMax As Single) As String
+On Error GoTo Err_AnalyseExp
+'
+'   Function calculates the largest expected slot and describes required ResGauge scans
+'   as function of settings and ResGauge scans performed. When required scans have been performed,
+'   the function gives the result OK
+'
+'   SlotAbove = scan for slots above this value
+'   NLAbove = if a slot exceeds SlotAbove but calculated largest slot do not exceed this value, NLIAbove number of lines shal be measured
+'   Based on experience from ResShunt production in 2009: C1=4.41(CL1=2), C2=4.38(CL1=4), C3=3.95(CL1=8) and C4=3.77(CL1=12)
+'   NLines, Avg, StDev = actual number of lines, average adn standard deviation for given section
+'
+'   Used in qrySlotExp1111
+'
+
+Dim C As Single     '   C factor to multiply with st. dev. to calculate largest slot
+Dim SlotC As Single '   Largest expected slot based on number of lines, st. dev. and average
+Dim Ccal As Single  '   Calculated C factor that gives largest exp slot = SlotAbove
+Dim CL As Integer, ExpL As Integer
+
+    C = LargeExpSlotC(NLines, C1, C2, C3, C4, CL1, CL2, CL3, CL4)
+    If C = 0 Then
+        AnalyseExp = "Data missing"
+        Exit Function
+    End If
+    SlotC = Avg + C * StDev
+    Ccal = (SlotAbove - Avg) / StDev
+        
+    If C = C1 Then
+        CL = CL1
+    ElseIf C = C2 Then
+        CL = CL2
+    ElseIf C = C3 Then
+        CL = CL3
+    Else
+        CL = CL4
+    End If
+    
+    If C2 = 0 Then CL2 = CL1
+    If C3 = 0 Then CL3 = CL2
+    If C4 = 0 Then CL4 = CL3
+    
+    
+    If Ccal > C1 Then   '   C1=4.41(CL1=2), C2=4.38(CL1=4), C3=3.95(CL1=8) and C4=3.77(CL1=12)
+        ExpL = 0
+    ElseIf Ccal < C1 And Ccal > C2 Then
+        ExpL = CL1
+    ElseIf Ccal < C2 And Ccal > C3 Then
+        ExpL = CL2
+    ElseIf Ccal < C3 And Ccal > C4 Then
+        ExpL = CL3
+    Else
+        ExpL = CL4
+    End If
+        
+
+If SlotC < SlotAbove Then
+    If SlotMax <= SlotAbove Then
+        AnalyseExp = "OK"
+    ElseIf NLines >= NLAbove Then
+        AnalyseExp = "OK"
+    Else
+        AnalyseExp = "Measure at least " & NLAbove & ", " & SlotMax & " detected!"
+    End If
+Else
+    If NLines >= CL4 Then   '   OK if sufisient number of lines are measures
+        AnalyseExp = "OK"
+    ElseIf SlotMax > SlotAbove Then
+        If NLAbove > ExpL Then  '   Number of required lines with large slot > Expected lines based on stdev
+            AnalyseExp = "Measure at least " & NLAbove & ", " & SlotMax & " detected!"
+        Else
+            AnalyseExp = "Measure more lines, probably " & ExpL & " lines"
+        End If
+    Else
+        AnalyseExp = "Measure more lines, probably " & ExpL & " lines"
+    End If
+End If
+
+
+Exit_AnalyseExp:
+    Exit Function
+
+Err_AnalyseExp:
+'   Write error message to tblBug
+    Forms![Start]![txtBug] = "Function AnalyseExp: " & Stat & Err.Description
+    DoCmd.SetWarnings False
+    DoCmd.OpenQuery "qryappBug", acNormal, acEdit
+    DoCmd.SetWarnings True
+'
+    MsgBox Err.Description
+    Resume Exit_AnalyseExp
+
+End Function
+Function GetLogonName() As String
+
+    ' Dimension variables
+    Dim lpBuff As String * 255
+    Dim ret As Long
+
+    ' Get the user name minus any trailing spaces found in the name.
+    ret = GetUserName(lpBuff, 255)
+     
+    If ret > 0 Then
+        GetLogonName = Left(lpBuff, InStr(lpBuff, Chr(0)) - 1)
+    Else
+        GetLogonName = vbNullString
+    End If
+End Function
+Function SlotImport(PathFileName As String, OrderLineID As Long, AssemblyID As Long) As Integer
+On Error GoTo Err_SlotImport
+
+'
+'   Import slot data text file to temporary table tblSlotImp
+'   Append general slot measurement information to tblSlotFile
+'   Append slot data to tblSlotData
+'   Delete content of tblSlotImp
+'   '   To be added: Loop through tblSlotData to identify sections
+'
+
+    Dim strPrompt As String, strDocName As String, strSql As String
+    Dim stDocName As String
+    Dim stLinkCriteria As String, stSql As String
+    Dim ComplexSlotFile As Integer
+    Dim L1 As Long, L2 As Long
+    Dim Stat As Integer, NSections As Integer, NLines As Integer
+    Dim NNormalWrap As Integer, NTestWrap As Integer
+    Dim I As Integer
+    
+'
+'   Check if tblSlotImp is in use. The table shuld be emty.
+'
+    Stat = 1
+    If DCount("[SlotImpPos]", "tblSlotImp") > 0 Then
+        MsgBox "Temporary tabel may be in use by other user, please wait a few seconds."
+'
+'   This should only happen if two operators try to import different slot data files at the same time
+'   Alternatively, a previous slot import may not have been completed properly. For this reason,
+'   delete data from "tblSlotImport"
+'
+        DoCmd.SetWarnings False
+        stDocName = "qrydelSlotImp"
+        DoCmd.OpenQuery stDocName, acNormal, acEdit
+        DoCmd.SetWarnings True
+    End If
+    
+    NSections = DLookup("[NSections]", "tblOrderLine", "[OrderLineID]=" & OrderLineID)
+    NLines = DLookup("[NLines]", "tblOrderLine", "[OrderLineID]=" & OrderLineID)
+    
+    
+'
+'   Import text file append data to tables
+'
+    
+    ComplexSlotFile = -1
+    
+    If NSections = 1 Then
+        stSql = "[AssemblyID]=" & AssemblyID & " AND [WrapTypeID]=1"
+        NNormalWrap = DCount("[WrapID]", "tblWrap", stSql)
+'
+'   Check if 1 and only 1 wrap section with status normal is recorded
+'   It should also be posible to import test sections. This is not yet completed, but see frmSlotImportWrapSection
+'
+        Select Case NNormalWrap
+        Case 0
+            MsgBox "No wrapped section with status normal recorded"
+            Exit Function
+        Case 1
+            Forms![frmSlotResult]![txtWrapID] = DLookup("[WrapID]", "tblWrap", stSql)
+            ComplexSlotFile = 0
+        Case Else
+            MsgBox "Too many normal wrapped sections recorded"
+            Exit Function
+        End Select
+    Else
+'
+'   Linking WrapID to slot data is done by function AnalyseSlotData
+'
+        Forms![frmSlotResult]![txtWrapID] = ""
+        ComplexSlotFile = -1
+    End If
+    
+    DoCmd.TransferText acImportDelim, "ImportSpecification", "tblSlotImp", PathFileName
+    Stat = 2
+        
+    DoCmd.SetWarnings False
+    
+    stDocName = "qryappSlotImpSlotFile"
+    DoCmd.OpenQuery stDocName, acNormal, acEdit
+    Stat = 3
+    
+    stDocName = "qryappSlotImpSlotData"
+    DoCmd.OpenQuery stDocName, acNormal, acEdit
+    Stat = 4
+    
+    stDocName = "qrydelSlotImp"
+    DoCmd.OpenQuery stDocName, acNormal, acEdit
+    Stat = 5
+    
+    DoCmd.SetWarnings True
+        
+'
+'   If complex slot file, run function AnalyseSlotData
+'
+    If ComplexSlotFile Then
+        I = AnalyseSlotData(DMax("[SlotFileID]", "tblSlotFile"))
+    End If
+
+    Forms![frmSlotResult]![cboAssemblyID].Requery
+    
+
+Exit_SlotImport:
+    Exit Function
+
+Err_SlotImport:
+'   Write error message to tblBug
+    Forms![Start]![txtBug] = "Function SlotImport: " & Stat & Err.Description
+    DoCmd.SetWarnings False
+    DoCmd.OpenQuery "qryappBug", acNormal, acEdit
+    DoCmd.SetWarnings True
+'
+    MsgBox Err.Description
+    Resume Exit_SlotImport
+
+End Function
+
+Function FindAngle(Txt As String) As Variant
+On Error GoTo Err_FindAngle
+'
+'   Look for the the text "deg" and if present, return the numerical value of the angle
+'
+    Dim I As Integer, S As String, T As String
+    Dim Pos As Integer
+    Dim Stat As Integer
+
+    Status = 1
+    Pos = InStr(1, Txt, "deg", vbTextCompare)
+    If Pos < 2 Then
+        FindAngle = "No angle"
+        Exit Function
+    End If
+    If Pos < 5 Then
+        Pos = 1
+    Else
+        Pos = Pos - 4
+    End If
+    Txt = Mid(Txt, Pos, 4)
+    I = 4
+    T = ""
+    Status = 2
+    Do While I > 0
+        S = Mid(Txt, I, 1)
+        If IsNumeric(S) Then
+            T = S & T
+        ElseIf Len(T) > 0 Then
+            GoTo exit_loop
+        End If
+        I = I - 1
+        Status = Status + 10
+    Loop
+
+exit_loop:
+
+    FindAngle = Val(T)
+
+Exit_FindAngle:
+    Exit Function
+
+Err_FindAngle:
+'   Write error message to tblBug
+    Forms![Start]![txtBug] = "Function FindAngle: " & Stat & Err.Description
+    DoCmd.SetWarnings False
+    DoCmd.OpenQuery "qryappBug", acNormal, acEdit
+    DoCmd.SetWarnings True
+'
+    MsgBox Err.Description
+    Resume Exit_FindAngle
+
+End Function
+Function SlotAngle(PathFileName As String, OrderLineID As Long, AssemblyID As Long) As Integer
+'
+'   Select angle ResGauge log file if more than 1 line can be measured
+'
+    Dim I As Integer
+    Dim strPromt As String, strAngle As String
+
+    If IsNull(DLookup("[NLines]", "tblOrderLine", "[OrderLineID]=" & OrderLineID)) Then
+        MsgBox "Number of ResGauge lines has not been set in Order form. Contact production planer to have this value set!"
+        Exit Function
+    End If
+
+'
+'   Check number of lines set in tblOrderLine.NLines
+'   NLines = 1 and no previous lines recorded, set angle to 0 and continue import
+'   NLines = 1 and pivious lines recorded, promt for angle for new line
+'   NLines > 1, open form with drop down list for relevant angles based on number of lines in NLines
+'   When this is done, function SlotImport is opened
+'
+    If DLookup("[NLines]", "tblOrderLine", "[OrderLineID]=" & OrderLineID) = 1 Then
+        If DCount("[SlotFileID]", "tblSlotFile", "[AssemblyID]=" & AssemblyID) > 0 Then
+            strPromt = "Enter angle for ResGauge log file: " & Forms![frmSlotResult]![txtFile]
+SlotAngleRedo:
+            strAngle = InputBox(strPromt, "ResLog")
+            If strAngle = "" Then
+                MsgBox "No angle entered. Import is stoped."
+                Exit Function
+            End If
+            If Not IsNumeric(strAngle) Then
+                MsgBox "Enter numerical value only"
+                GoTo SlotAngleRedo
+            End If
+            Forms![frmSlotResult]![txtAngle] = strAngle * 1
+            I = SlotImport(PathFileName, OrderLineID, AssemblyID)
+        Else
+            Forms![frmSlotResult]![txtAngle] = 0
+            SlotAngle = 0
+            I = SlotImport(PathFileName, OrderLineID, AssemblyID)
+        End If
+    Else
+        Forms![frmSlotResult]![txtNLines] = DLookup("[NLines]", "tblOrderLine", "[OrderLineID]=" & OrderLineID)
+        DoCmd.OpenForm "frmSlotImportAngle"
+        Forms![frmSlotImportAngle]![txtPathFileName] = PathFileName
+        Forms![frmSlotImportAngle]![txtOrderLineID] = OrderLineID
+        Forms![frmSlotImportAngle]![txtAssemblyID] = AssemblyID
+    End If
+
+End Function
